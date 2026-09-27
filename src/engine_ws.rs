@@ -72,7 +72,14 @@ impl Engine {
                         return Err("Соединение с Engine прервано.".into());
                     }
                 }
-                Ok(Message::Close(_)) | Err(_) => {
+                Ok(Message::Close(_)) => {
+                    // `read` queued the close reply on the socket — flush so
+                    // the peer sees a real close handshake (RFC 6455 §5.5.1)
+                    // instead of a bare TCP FIN.
+                    let _ = socket.flush();
+                    return Err("Соединение с Engine прервано.".into());
+                }
+                Err(_) => {
                     return Err("Соединение с Engine прервано.".into());
                 }
                 Ok(_) => {}
@@ -97,7 +104,13 @@ impl EventStream {
                         return None;
                     }
                 }
-                Ok(Message::Close(_)) | Err(_) => return None,
+                Ok(Message::Close(_)) => {
+                    // Same close-reply flush as the handshake path — the
+                    // caller dropping the stream must not skip it.
+                    let _ = self.socket.flush();
+                    return None;
+                }
+                Err(_) => return None,
                 Ok(_) => {}
             }
         }

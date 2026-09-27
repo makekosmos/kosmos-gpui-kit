@@ -218,8 +218,15 @@ pub fn open_path(path: &std::path::Path) -> Result<(), String> {
 }
 
 /// Open an https/http URL in the system browser (shell.openExternal parity).
+/// URL schemes are case-insensitive (RFC 3986 §3.1) — `HTTPS://…` is valid.
 pub fn open_url(url: &str) -> Result<(), String> {
-    if !(url.starts_with("https://") || url.starts_with("http://")) {
+    let http = url
+        .get(..8)
+        .is_some_and(|p| p.eq_ignore_ascii_case("https://"))
+        || url
+            .get(..7)
+            .is_some_and(|p| p.eq_ignore_ascii_case("http://"));
+    if !http {
         return Err("Недопустимый URL".into());
     }
     open_path(std::path::Path::new(url))
